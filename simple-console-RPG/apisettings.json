@@ -1,0 +1,12 @@
+{
+  /* API Configuration */
+  "ApiKey": "",                      /* Your API key (can be empty for some local services) */
+  "BaseUrl": "http://localhost:8080/v1", /* Base URL of the API service */
+  "Model": "gpt-3.5-turbo",           /* Model to use */
+
+  /* Model Parameters */
+  "Temperature": 0.7,                 /* Controls randomness (0.0 to 1.0) */
+  "MaxTokens": 800,                   /* Maximum tokens to generate */
+  "StreamResponse": false,            /* Whether to stream the response */
+  "TimeoutSeconds": 60                /* Timeout in seconds */
+}

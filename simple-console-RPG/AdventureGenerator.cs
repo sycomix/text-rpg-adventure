@@ -1,5 +1,4 @@
-﻿using OpenAI_API;
-using simple_console_RPG;
+﻿using simple_console_RPG;
 
 
 public class AdventureGenerator
@@ -11,10 +10,10 @@ public class AdventureGenerator
         // need to figure out how class benefits character type
         // how does characterClass add to stats
         StrengthBased,
-        SpeedBased, 
-        LuckBased, 
-        MagicBased, 
-        HealthBased, 
+        SpeedBased,
+        LuckBased,
+        MagicBased,
+        HealthBased,
         Default
     }
 
@@ -69,7 +68,7 @@ public class AdventureGenerator
     private bool ChapterFourComplete
     {
         get => _chapterFourComplete;
-        set => _chapterFourComplete = value;             
+        set => _chapterFourComplete = value;
     }
 
     private string Setting
@@ -114,12 +113,10 @@ public class AdventureGenerator
         // randomizer
         int random = new Random().Next(0, 10);
 
-        // api junk
-        string apikeyFilePath = "apikey.txt";
-        string text = File.ReadAllText(apikeyFilePath);
-
-        OpenAIAPI api = new OpenAIAPI(text);
-        var chat = api.Chat.CreateConversation();
+        // Initialize API service
+        var config = ApiConfiguration.LoadFromFile();
+        var apiService = new OpenAiCompatibleService(config);
+        var chat = apiService.CreateConversation();
 
         // story helper classes
         Grammar grammar = new Grammar();
@@ -181,8 +178,8 @@ public class AdventureGenerator
 
             Console.WriteLine("are you ready? (chapter two)");
         }
-       
-        async Task<string> ChapterTwoAsync() // handles combat 
+
+        async Task<string> ChapterTwoAsync() // handles combat
         {
             int enemyStrengthLevel = new Random().Next(0, 4);
             int enemySpeedLevel = new Random().Next(0, 4);
@@ -284,11 +281,11 @@ public class AdventureGenerator
 
         async Task<string> ChapterThreeAsync()
         {
-           
-            
-                Health = Health - new Random().Next(0, 10);
-                Task.Delay(1000);
-                Console.WriteLine("You encounter an enemy!");
+
+
+            Health = Health - new Random().Next(0, 10);
+            Task.Delay(1000);
+            Console.WriteLine("You encounter an enemy!");
                 Task.Delay(2000);
                 Console.WriteLine("A fierce battle begins.. you have taken damage!");
                 Task.Delay(3000);
@@ -335,7 +332,7 @@ public class AdventureGenerator
                     Environment.Exit(exitCode);
 
                     return "";
-                } 
+            }
         }
 
         async Task<string> ChapterFourAsync() // side quest
@@ -360,11 +357,10 @@ public class AdventureGenerator
                 Console.WriteLine($"Speed: {player.Speed}, Magic: {player.Magic}, Strength: {player.Strength}");
                 if (player.Speed + player.Strength + player.Magic > new Random().Next(3, 6))
                 {
-                    // decide on how much to heal player
-                    string apikeyFilePath = "apikey.txt";
-                    string text = File.ReadAllText(apikeyFilePath);
-                    OpenAIAPI api = new OpenAIAPI(text);
-                    var chat = api.Chat.CreateConversation();
+                    // Initialize API service
+                    var config = ApiConfiguration.LoadFromFile();
+                    var apiService = new OpenAiCompatibleService(config);
+                    var chat = apiService.CreateConversation();
                     PlayerStats newPlayer = new PlayerStats();
 
                     chat.AppendUserInput($"the character has been rewarded for their kindness and bravery in helping a stranger in the {Setting}"
@@ -388,7 +384,7 @@ public class AdventureGenerator
                     string response = await chat.GetResponseFromChatbotAsync();
                     return response;
                 }
-              
+
                 else
                 {
                     await Task.Delay(1000);
@@ -405,10 +401,10 @@ public class AdventureGenerator
 
                     return "you died";
                 }
-            } 
+            }
             return "im not sure...";
         }
 
-  
+
     }
 }

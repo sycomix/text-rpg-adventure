@@ -197,39 +197,73 @@ namespace simple_console_RPG
 
 
 
-public async Task<ChatResult> CreateChatCompletionAsync(params ChatRequest[] messages) 
-{
-var result = await api.Chat.CreateChatCompletionAsync(new ChatRequest()
-{
-    Model = Model.ChatGPTTurbo,
-    Temperature = 0.1,
-    MaxTokens = 50,
-    Messages = new ChatMessage[] {
-            new ChatMessage(ChatMessageRole.User, "Hello!")
+        private OpenAiCompatibleService? _apiService;
+        private ApiConfiguration? _config;
+
+        public async Task<ChatResult> CreateChatCompletionAsync(ChatRequest request)
+        {
+            try
+            {
+                if (_apiService == null)
+                {
+                    _config = ApiConfiguration.LoadFromFile();
+                    _apiService = new OpenAiCompatibleService(_config);
+                }
+
+                return await _apiService.CreateChatCompletionAsync(request);
+            }
+            catch (ApiException ex)
+            {
+                Console.WriteLine($"API Error: {ex.Message}");
+                if (ex.StatusCode > 0)
+                {
+                    Console.WriteLine($"Status Code: {ex.StatusCode}");
+                }
+
+                // Create a fallback response
+                return CreateFallbackResponse("Sorry, there was an error communicating with the AI service. Please try again later.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Unexpected error: {ex.Message}");
+                return CreateFallbackResponse("An unexpected error occurred. Please try again.");
+            }
         }
-});
-			return CreateChatCompletionAsync(request);       
-             }
+
+        private ChatResult CreateFallbackResponse(string message)
+        {
+            return new ChatResult
+            {
+                Choices = new List<ChatChoice>
+                {
+                    new ChatChoice
+                    {
+                        Message = new ChatMessage(ChatMessageRole.Assistant, message)
+                    }
+                }
+            };
+        }
 
         public async Task<StoryObjects> Intro(Task<PlayerStats> player)
         {
 
             this.newPlayer = await player;
-   
+
 
             Console.WriteLine($"stats ->  strength: {newPlayer.Strength}, speed: {newPlayer.Speed}, health: {newPlayer.Health} ");
 
             // randomizer
             int random = new Random().Next(0, 10);
 
-            // api junk
-            string apikeyFilePath = "apikey.txt";
-            string text = File.ReadAllText(apikeyFilePath);
+            // Initialize API service if not already initialized
+            if (_apiService == null)
+            {
+                _config = ApiConfiguration.LoadFromFile();
+                _apiService = new OpenAiCompatibleService(_config);
+            }
+            //var chat = _apiService.CreateConversation();
 
-            OpenAIAPI api = new OpenAIAPI(text);
-            //var chat = api.Chat.CreateConversation();
-            
-            
+
 
             // story helper classes
             Grammar grammar = new Grammar();
@@ -271,8 +305,33 @@ var result = await api.Chat.CreateChatCompletionAsync(new ChatRequest()
 
             var storyparam = storyparams.TemplateForStory(Setting, EnemyAi, enemyElemental[random], EnemyGoal, Goal);
 
-            var res = CreateChatCompletionAsync(storyparam);
-            Console.WriteLine(res);
+            try
+            {
+                var request = new ChatRequest()
+                {
+                    Model = Model.ChatGPTTurbo,
+                    Temperature = _config?.Temperature ?? 0.7f,
+                    MaxTokens = _config?.MaxTokens ?? 800,
+                    Messages = new ChatMessage[] {
+                        new ChatMessage(ChatMessageRole.User, storyparam)
+                    }
+                };
+
+                var result = await CreateChatCompletionAsync(request);
+                if (result.Choices.Count > 0)
+                {
+                    Console.WriteLine(result.Choices[0].Message.Content);
+                    StoryInfo = result.Choices[0].Message.Content;
+                }
+                else
+                {
+                    Console.WriteLine("No response generated.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error generating story: {ex.Message}");
+            }
 
 
             // USE AS "GROUNDING" FOR SETTING THE STAGE
@@ -326,22 +385,26 @@ var result = await api.Chat.CreateChatCompletionAsync(new ChatRequest()
             Task.Delay(3000).Wait();
             Console.WriteLine($"Battle stats: strength: {newPlayer.Strength}, speed: {newPlayer.Speed}, health: {newPlayer.Health} ");
 
-            // api junk
-            string apikeyFilePath = "apikey.txt";
-            string text = File.ReadAllText(apikeyFilePath);
+            // Initialize API service if needed
+            if (_apiService == null)
+            {
+                _config = ApiConfiguration.LoadFromFile();
+                _apiService = new OpenAiCompatibleService(_config);
+            }
 
-            OpenAIAPI api = new OpenAIAPI(text);
-            var chat = api.Chat.CreateConversation();
+            try
+            {
+                var chat = _apiService.CreateConversation();
 
-            // story helper classes
-            Grammar grammar = new Grammar();
-            StorySetup story = new StorySetup();
-            StoryParameters storyparams = new StoryParameters();
+                // story helper classes
+                Grammar grammar = new Grammar();
+                StorySetup story = new StorySetup();
+                StoryParameters storyparams = new StoryParameters();
 
-            // set up
-            string[] location = story.Location();
-            string[] enemy = story.EnemyType();
-            string[] enemyAdjective = story.EnemyAdjective();
+                // set up
+                string[] location = story.Location();
+                string[] enemy = story.EnemyType();
+                string[] enemyAdjective = story.EnemyAdjective();
             string[] enemyLeader = story.EnemyLeader();
 
             string[] enemyElemental = story.Elemental();
@@ -466,9 +529,14 @@ var result = await api.Chat.CreateChatCompletionAsync(new ChatRequest()
 
 
 
-   
-            return this;
-        }   
+
+                return this;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in Chapter1: {ex.Message}");
+                return this;
+            }
 
         public async Task<StoryObjects> Chapter2()
         {
@@ -477,20 +545,23 @@ var result = await api.Chat.CreateChatCompletionAsync(new ChatRequest()
             // add one or two if checks
             // find inventory armor that adds to health
 
-            // api junk
-            string apikeyFilePath = "apikey.txt";
-            string text = File.ReadAllText(apikeyFilePath);
+            try
+            {
+                // Initialize API service if needed
+                if (_apiService == null)
+                {
+                    _config = ApiConfiguration.LoadFromFile();
+                    _apiService = new OpenAiCompatibleService(_config);
+                }
+                var chat = _apiService.CreateConversation();
 
-            OpenAIAPI api = new OpenAIAPI(text);
-            var chat = api.Chat.CreateConversation();
+                // story helper classes
+                Grammar grammar = new Grammar();
+                StorySetup story = new StorySetup();
+                StoryParameters storyparams = new StoryParameters();
 
-            // story helper classes
-            Grammar grammar = new Grammar();
-            StorySetup story = new StorySetup();
-            StoryParameters storyparams = new StoryParameters();
-
-            // set up
-            string[] location = story.Location();
+                // set up
+                string[] location = story.Location();
             string[] enemy = story.EnemyType();
             string[] enemyAdjective = story.EnemyAdjective();
             string[] enemyElemental = story.Elemental();
@@ -554,24 +625,33 @@ var result = await api.Chat.CreateChatCompletionAsync(new ChatRequest()
 
             await Chapter3Async();
             return this;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in Chapter2: {ex.Message}");
+                return this;
+            }
         }
 
         public async Task<StoryObjects> Chapter3Async()
         {
             // NPC encounter
-            // receive berry for health and speed or inv item to increase defense 
+            // receive berry for health and speed or inv item to increase defense
             // if luck is high, receive both
 
-            // api junk
-            string apikeyFilePath = "apikey.txt";
-            string text = File.ReadAllText(apikeyFilePath);
+            try
+            {
+                // Initialize API service if needed
+                if (_apiService == null)
+                {
+                    _config = ApiConfiguration.LoadFromFile();
+                    _apiService = new OpenAiCompatibleService(_config);
+                }
+                var chat = _apiService.CreateConversation();
 
-            OpenAIAPI api = new OpenAIAPI(text);
-            var chat = api.Chat.CreateConversation();
-
-            // story helper classes
-            Grammar grammar = new Grammar();
-            StorySetup story = new StorySetup();
+                // story helper classes
+                Grammar grammar = new Grammar();
+                StorySetup story = new StorySetup();
             StoryParameters storyparams = new StoryParameters();
 
             // set up
@@ -635,10 +715,16 @@ var result = await api.Chat.CreateChatCompletionAsync(new ChatRequest()
             Console.ReadLine();
             await Chapter4();
             return this;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in Chapter3Async: {ex.Message}");
+                return this;
+            }
         }
 
         // add a shop function? use coins to buy an item,
-        // choose from list, list item increase player stat 
+        // choose from list, list item increase player stat
 
         public async Task<StoryObjects> Chapter4()
         {
@@ -649,8 +735,7 @@ var result = await api.Chat.CreateChatCompletionAsync(new ChatRequest()
             return this;
         }
 
-    
+
 
     }
 }
-
